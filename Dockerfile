@@ -60,41 +60,9 @@ RUN set -x \
 	&& rm bin/*.bat \
 	&& rm tomcat.tar.gz* \
 	\
-	&& nativeBuildDir="$(mktemp -d)" \
-	&& tar -xvf bin/tomcat-native.tar.gz -C "$nativeBuildDir" --strip-components=1 \
-	&& nativeBuildDeps=" \
-		gcc \
-		libapr1-dev \
-		libssl-dev \
-		make \
-		openjdk-${JAVA_VERSION%%[-~bu]*}-jdk=$JAVA_DEBIAN_VERSION \
-	" \
-	&& apt-get update && apt-get install -y --no-install-recommends $nativeBuildDeps && rm -rf /var/lib/apt/lists/* \
-	&& ( \
-		export CATALINA_HOME="$PWD" \
-		&& cd "$nativeBuildDir/jni/native" \
-		&& ./configure \
-			--libdir="$TOMCAT_NATIVE_LIBDIR" \
-			--prefix="$CATALINA_HOME" \
-			--with-apr="$(which apr-1-config)" \
-			--with-java-home="$(docker-java-home)" \
-			--with-ssl=yes \
-		&& make -j$(nproc) \
-		&& make install \
-	) \
-	&& apt-get purge -y --auto-remove $nativeBuildDeps \
-	&& rm -rf "$nativeBuildDir" \
 	&& rm bin/tomcat-native.tar.gz
 
 # verify Tomcat Native is working properly
-RUN set -e \
-	&& nativeLines="$(catalina.sh configtest 2>&1)" \
-	&& nativeLines="$(echo "$nativeLines" | grep 'Apache Tomcat Native')" \
-	&& nativeLines="$(echo "$nativeLines" | sort -u)" \
-	&& if ! echo "$nativeLines" | grep 'INFO: Loaded APR based Apache Tomcat Native library' >&2; then \
-		echo >&2 "$nativeLines"; \
-		exit 1; \
-	fi
 
 EXPOSE 8080
 CMD ["catalina.sh", "run"]
